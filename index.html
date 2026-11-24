@@ -126,8 +126,7 @@
         <input id="cpf" autocomplete="off" inputmode="numeric" placeholder="000.000.000-00">
       </div>
 
-      <p class="note" id="usados"></p>
-      <p class="note">Depois de imprimir: cliente assina, o escritório digitaliza o termo assinado para a pasta do cliente no Google Drive e registra o código no Advbox. O original fica com o cliente.</p>
+      <p class="note" id="usados" role="status"></p>
     </section>
 
     <section class="card preview">
@@ -270,7 +269,7 @@ Anote o código num papel, guarde com seus documentos e *apague esta mensagem*.`
     $("waText").value = waMensagem();
   }
 
-  // Registro central dos códigos (planilha do escritório no Google Drive, via Google Apps Script).
+  // Registro central dos códigos.
   // Guarda só o código e a data. Nome e CPF nunca saem desta página.
   const REGISTRO_URL = "https://script.google.com/macros/s/AKfycbwPcaLb69P7nMIK9LunqpCeszmHiTV6iliy_BzX6esQFWiwcrGgd6Mut49mjpegRC45GA/exec";
   const registroOk = /^https:\/\/script\.google\.com\//.test(REGISTRO_URL);
@@ -287,15 +286,15 @@ Anote o código num papel, guarde com seus documentos e *apague esta mensagem*.`
   function status(msg, erro) { const el = $("usados"); el.textContent = msg; el.classList.toggle("erro", !!erro); }
 
   async function atualizarStatus() {
-    if (!registroOk) { status("Registro central ainda não configurado. Não entregue códigos gerados agora.", true); return; }
-    try { const r = await chamar({ acao: "status" }); status("Registro central conectado · " + r.total + (r.total === 1 ? " código já usado." : " códigos já usados.") + " Nenhum se repete."); }
-    catch (e) { status("Sem conexão com o registro central. Verifique a internet e recarregue a página.", true); }
+    if (!registroOk) { status("Gerador indisponível. Não entregue códigos gerados agora.", true); return; }
+    try { await chamar({ acao: "status" }); status(""); }
+    catch (e) { status("Sem conexão. Verifique a internet e recarregue a página.", true); }
   }
 
   let ocupado = false;
   async function gerar() {
     if (ocupado) return;
-    if (!registroOk) { toast("Registro central não configurado."); return; }
+    if (!registroOk) { toast("Gerador indisponível."); return; }
     ocupado = true; $("gen").disabled = true; $("gen").textContent = "Gerando e registrando…";
     try {
       for (let i = 0; i < 25; i++) {
@@ -306,7 +305,7 @@ Anote o código num papel, guarde com seus documentos e *apague esta mensagem*.`
           $("code").textContent = r.code;
           $("dictate").textContent = "Para ditar: " + r.fala;
           render();
-          status("Código registrado · " + resp.total + (resp.total === 1 ? " código já usado." : " códigos já usados.") + " Nenhum se repete.");
+          status("");
           return;
         }
         if (!resp.repetido) throw new Error(resp.erro || "resposta inesperada");
@@ -315,7 +314,7 @@ Anote o código num papel, guarde com seus documentos e *apague esta mensagem*.`
     } catch (e) {
       state.code = ""; $("code").textContent = "—"; $("dictate").textContent = "Nenhum código foi gerado.";
       render();
-      status("Não consegui registrar o código (" + e.message + "). Verifique a internet e tente de novo.", true);
+      status("Não foi possível gerar o código. Verifique a internet e tente de novo.", true);
     } finally {
       ocupado = false; $("gen").disabled = false; $("gen").textContent = "Gerar novo código";
     }
